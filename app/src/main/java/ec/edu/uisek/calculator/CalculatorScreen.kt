@@ -34,10 +34,18 @@ import androidx.compose.ui.unit.sp
 import ec.edu.uisek.calculator.ui.theme.Purple40
 import ec.edu.uisek.calculator.ui.theme.Purple80
 import ec.edu.uisek.calculator.ui.theme.UiSekBlue
+import androidx.lifecycle.viewmodel.compose.viewModel
+
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import ec.edu.uisek.calculator.ui.theme.Red
+
 
 @Composable
-fun CalculatorScreen() {
-    var inputText by remember { mutableStateOf("") }
+fun CalculatorScreen(viewModel: CalculatorViewModel = viewModel()) {
+    var state = viewModel.state
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -45,42 +53,35 @@ fun CalculatorScreen() {
             .padding(16.dp),
         verticalArrangement = Arrangement.Center
     ) {
-        TextField(
-            value = inputText,
-            onValueChange = { inputText = it },
+        Text(
+            text = state.display,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp),
-            textStyle = LocalTextStyle.current.copy(
-                fontSize = 36.sp,
-                textAlign = TextAlign.End,
-                color = Color.White
-            ),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-                cursorColor = Color.White
-            ),
-            singleLine = true
+            fontSize = 56.sp,
+            textAlign = TextAlign.End,
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1
+
         )
 
+
+
         // Aquí colocaremos la cuadrícula de botones
-        CalculatorGrid { label ->
-            inputText += label
-        }
+        CalculatorGrid (onEvent = viewModel::onEvent)
     }
 }
 
 @Composable
-fun CalculatorGrid(onButtonClick: (String) -> Unit) {
+fun CalculatorGrid(onEvent: (CalculatorEvent) -> Unit) {
     val buttons = listOf(
         "7", "8", "9", "÷",
         "4", "5", "6", "×",
         "1", "2", "3", "−",
         "0", ".", "=", "+"
     )
+
     LazyVerticalGrid(
         columns = GridCells.Fixed(4),
         modifier = Modifier
@@ -92,7 +93,26 @@ fun CalculatorGrid(onButtonClick: (String) -> Unit) {
         items(buttons.size) { index ->
             val label = buttons[index]
             CalculatorButton(label = label) {
-                onButtonClick(label)
+                when (label) {
+                    in "0".."9" -> onEvent(CalculatorEvent.Number(number = label))
+                    "." -> onEvent(CalculatorEvent.Decimal)
+                    "=" -> onEvent(CalculatorEvent.Calculate)
+                    "+", "−", "×", "÷" -> onEvent(CalculatorEvent.Operator(operator = label))
+                }
+            }
+        }
+
+        // Botón AC ocupa 2 columnas
+        item(span = { GridItemSpan(2) }) {
+            CalculatorButton(label = "AC") {
+                onEvent(CalculatorEvent.AllClear)
+            }
+        }
+
+        // Botón C ocupa 2 columnas
+        item(span = { GridItemSpan(2) }) {
+            CalculatorButton(label = "C") {
+                onEvent(CalculatorEvent.Clear)
             }
         }
     }
@@ -101,19 +121,19 @@ fun CalculatorGrid(onButtonClick: (String) -> Unit) {
 
 @Composable
 fun CalculatorButton(label: String, onClick: () -> Unit) {
-    Box (
+    Box(
         modifier = Modifier
-            .aspectRatio(1f)
+            .aspectRatio(ratio = if (label == "AC" || label == "C") 2f else 1f)
             .fillMaxSize()
             .clip(CircleShape)
-            .background(if (label in listOf("÷", "×", "−", "+", "=", "."))
-                Purple40
-                else
-                UiSekBlue
-            )
+            .background(color = when (label) {
+                in listOf("+", "−", "×", "÷", "=") -> Purple40
+                in listOf("AC", "C") -> Red
+                else -> UiSekBlue
+            })
             .clickable { onClick() },
         contentAlignment = Alignment.Center
-    ){
+    ) {
         Text(
             text = label,
             color = Color.White,
@@ -123,6 +143,7 @@ fun CalculatorButton(label: String, onClick: () -> Unit) {
         )
     }
 }
+
 
 @Preview(showBackground = true)
 @Composable
